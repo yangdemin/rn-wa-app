@@ -57,8 +57,16 @@ jobs:
     - name: Clean test files from nodejs-project
       run: |
         cd nodejs-assets/nodejs-project
-        find node_modules -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete
+        # 清理 node_modules 中的测试文件
+        find node_modules -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete 2>/dev/null || true
+        # 清理 Baileys 源码中的测试文件和目录
+        rm -rf Baileys-6.7.21/src/__tests__ 2>/dev/null || true
+        rm -rf Baileys-6.7.21/__tests__ 2>/dev/null || true
+        find Baileys-6.7.21 -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete 2>/dev/null || true
         find Baileys-6.7.21/node_modules -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete 2>/dev/null || true
+        # 列出剩余的 TypeScript 文件以便调试
+        echo "Remaining .ts files:"
+        find . -name "*.ts" -type f | head -20 || true
         
     - name: Build Android APK
       run: |

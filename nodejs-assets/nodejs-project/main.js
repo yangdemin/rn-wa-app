@@ -38,8 +38,8 @@ global.crypto = require('crypto');
 })();
 
 
-// 使用本地的 Baileys-6.7.21 源码
-const { makeWASocket, useMultiFileAuthState, Browsers, downloadMediaMessage, getContentType, DisconnectReason } = require('./Baileys-6.7.21');
+// 使用 npm 安装的 Baileys (支持 Node.js 18)
+const { makeWASocket, useMultiFileAuthState, Browsers, downloadMediaMessage, getContentType, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const pino = require('pino');

@@ -586,13 +586,36 @@ class WhatsAppBot {
     // 保存二维码为 PNG，存放在项目下的 "党建" 目录
     async saveQrImage(qr) {
         try {
-            const dir = path.resolve(__dirname, 'login_qr');
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            const baseDir = (rn_bridge.app && typeof rn_bridge.app.datadir === 'function')
+                ? path.join(rn_bridge.app.datadir(), 'login_qr')
+                : path.resolve(__dirname, 'login_qr');
+
+            if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
+
             const filename = `whatsapp_qr_${Date.now()}.png`;
-            const filePath = path.join(dir, filename);
+            const filePath = path.join(baseDir, filename);
+
             // 使用 qrcode 库将二维码字符串生成 png 文件
             await QRCode.toFile(filePath, qr, { type: 'png', width: 400, margin: 2 });
+
+            // 读取文件为 Base64，便于在 RN 侧展示或另存
+            let base64Data = null;
+            try {
+                const buffer = fs.readFileSync(filePath);
+                base64Data = `data:image/png;base64,${buffer.toString('base64')}`;
+            } catch (readErr) {
+                console.error('读取二维码文件失败：', readErr);
+            }
+
             console.log('✅ 已保存二维码图片：', filePath);
+
+            // 通知 RN 文件保存结果
+            rn_bridge.channel.send(JSON.stringify({
+                type: 'qr_saved',
+                filePath,
+                base64: base64Data
+            }));
+
             return filePath;
         } catch (e) {
             console.error('保存二维码图片异常：', e);

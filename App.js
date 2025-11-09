@@ -1,3 +1,4 @@
+import 'fast-text-encoding';
 import React, {useEffect, useState} from 'react';
 import {
   SafeAreaView,
@@ -6,6 +7,7 @@ import {
   View,
   Button,
   ScrollView,
+  Image,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import nodejs from 'nodejs-mobile-react-native';
@@ -16,6 +18,7 @@ function App() {
   const [qrCode, setQrCode] = useState(null); // 存储二维码数据
   const [waRunning, setWaRunning] = useState(false); // Bot 是否已启动
   const [waConnected, setWaConnected] = useState(false); // 是否已连接 WhatsApp
+  const [qrSavedInfo, setQrSavedInfo] = useState(null); // 最近一次保存的二维码信息
 
   const stopWhatsApp = () => {
     if (!waRunning) {
@@ -66,12 +69,17 @@ function App() {
           // 二维码 - 显示在界面上
           setMessages(prev => [...prev, `📱 收到二维码，请扫描登录 WhatsApp`]);
           setQrCode(data.qrCode); // 保存二维码数据用于显示
+          setQrSavedInfo(null);
           console.log('二维码数据:', data.qrCode);
+        } else if (data && data.type === 'qr_saved') {
+          setQrSavedInfo({ filePath: data.filePath, base64: data.base64 });
+          setMessages(prev => [...prev, `🖼️ 二维码图片已保存: ${data.filePath}`]);
         } else if (data && data.type === 'connected') {
           // 连接成功 - 清除二维码
           setWaConnected(true);
           setMessages(prev => [...prev, `✅ ${data.message}`]);
           setQrCode(null);
+          setQrSavedInfo(null);
           } else if (data && data.type === 'wa_stopped') {
             setWaRunning(false);
             setWaConnected(false);
@@ -147,6 +155,15 @@ function App() {
               />
             </View>
             <Text style={styles.qrHint}>打开 WhatsApp → 设置 → 已连接的设备 → 连接设备</Text>
+            {qrSavedInfo?.filePath && (
+              <Text style={styles.qrPath}>已保存到: {qrSavedInfo.filePath}</Text>
+            )}
+            {qrSavedInfo?.base64 && (
+              <Image
+                source={{ uri: qrSavedInfo.base64 }}
+                style={styles.qrSavedPreview}
+              />
+            )}
           </View>
         )}
         
@@ -232,6 +249,18 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 10,
+  },
+  qrPath: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  qrSavedPreview: {
+    width: 200,
+    height: 200,
+    marginTop: 12,
+    borderRadius: 8,
   },
   buttonContainer: {
     flexDirection: 'row',

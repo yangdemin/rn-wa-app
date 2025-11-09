@@ -13,7 +13,8 @@
     "react-native": "0.71.19",
     "react-native-qrcode-svg": "6.2.0",
     "react-native-svg": "13.9.0",
-    "strip-ansi": "6.0.1"
+    "strip-ansi": "6.0.1",
+    "fast-text-encoding": "1.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

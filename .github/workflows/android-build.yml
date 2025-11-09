@@ -70,6 +70,16 @@ jobs:
         # 列出剩余的 TypeScript 文件以便调试
         echo "Remaining .ts files:"
         find . -name "*.ts" -type f | head -20 || true
+    
+    - name: Bundle JS for Android (embed index.android.bundle into APK)
+      run: |
+        mkdir -p android/app/src/main/assets || true
+        npx react-native bundle \
+          --platform android \
+          --dev false \
+          --entry-file index.js \
+          --bundle-output android/app/src/main/assets/index.android.bundle \
+          --assets-dest android/app/src/main/res/
         
     - name: Build Android APK
       run: |

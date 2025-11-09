@@ -219,8 +219,9 @@ class WhatsAppBot {
             // const proxyUrl = 'socks5h://192.168.2.99:10808';
             // const agent = new SocksProxyAgent(proxyUrl);
             // console.log('⚠️ 已配置代理:', proxyUrl);
-
+            const WHATSAPP_VERSION = [2, 3000, 1027934701];
             this.sock = makeWASocket({
+                version: WHATSAPP_VERSION,
                 auth: state,
                 // ⚠️ 关键修改：使用 appropriate (移动端) 而不是桌面浏览器
                 // baileys 6.6.0+ 可能需要 Mobile API

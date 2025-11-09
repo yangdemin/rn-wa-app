@@ -175,11 +175,13 @@ class WhatsAppBot {
         this.sock = null;
         this.isConnected = false;
         this.retryCount = 0; // 重试计数
+        this.shuttingDown = false; // 是否正在手动停止
     }
 
     async initialize() {
         try {
             console.log('开始初始化 WhatsApp Bot...');
+            this.shuttingDown = false;
             
             // 先测试网络连接
             try {
@@ -254,7 +256,9 @@ class WhatsAppBot {
                 message: `初始化失败: ${error.message}`
             }));
             
-            setTimeout(() => this.initialize(), 15000);
+            if (!this.shuttingDown) {
+                setTimeout(() => this.initialize(), 15000);
+            }
         }
     }
 
@@ -369,16 +373,21 @@ class WhatsAppBot {
                 }));
             }
 
+            if (this.shuttingDown) {
+                console.log('ℹ️ 已手动停止，不再重连');
+                return;
+            }
+
             // 计算重试次数和延迟时间（指数退避）
             this.retryCount++;
             const baseDelay = 35000; // 35秒基础延迟
             const maxDelay = 300000; // 最大5分钟
             const delay = Math.min(baseDelay * Math.pow(1.5, this.retryCount - 1), maxDelay);
-            
+
             console.log(`❌ 连接断开，${Math.round(delay/1000)}秒后尝试第 ${this.retryCount} 次重连...`);
-            
+
             setTimeout(() => {
-                if (!this.isConnected) {
+                if (!this.isConnected && !this.shuttingDown) {
                     console.log(`⏱️ 开始第 ${this.retryCount} 次重新连接...`);
                     this.initialize();
                 }
@@ -594,48 +603,122 @@ class WhatsAppBot {
 
 
 // 监听来自 React Native 的消息
-rn_bridge.channel.on('message', function(msg) {
+// 维护单例，避免重复创建导致多连接或资源竞争
+let botInstance = null;
+
+rn_bridge.channel.on('message', async function(msg) {
     console.log('收到 RN 消息:', msg);
-    
     try {
-        var data = JSON.parse(msg);
-        
-        if (data.command === 'status') {
-            rn_bridge.channel.send(JSON.stringify({
-                type: 'status',
-                message: 'Node.js 正在运行'
-            }));
-        } else if (data.command === 'test_network') {
-            // 手动触发网络测试
-            console.log('🔍 收到网络测试命令');
-            testNetworkConnectivity().then(result => {
-                console.log('网络测试完成，结果:', result);
-            }).catch(err => {
-                console.error('网络测试失败:', err);
-            });
-        } else if (data.command === 'start_wa') {
-             // 启动 WhatsApp Bot
-             try {
-                // 启动机器人
-                const bot = new WhatsAppBot();
-                bot.initialize();
+        const data = JSON.parse(msg);
+        switch (data.command) {
+            case 'status':
                 rn_bridge.channel.send(JSON.stringify({
-                    type: 'wa_started',
-                    message: 'WhatsApp Bot 已启动'
+                    type: 'status',
+                    message: 'Node.js 正在运行',
+                    waRunning: !!(botInstance && botInstance.isConnected)
                 }));
-             } catch (e) {
-                rn_bridge.channel.send(JSON.stringify({
-                    type: 'error',
-                    message: 'WhatsApp Bot 启动失败: ' + e.message
-                }));
-             }
+                break;
+            case 'test_network':
+                console.log('🔍 收到网络测试命令');
+                testNetworkConnectivity()
+                    .then(result => console.log('网络测试完成，结果:', result))
+                    .catch(err => console.error('网络测试失败:', err));
+                break;
+            case 'start_wa':
+                if (botInstance) {
+                    console.log('ℹ️ WhatsAppBot 已存在，跳过重新创建');
+                    rn_bridge.channel.send(JSON.stringify({
+                        type: 'wa_started',
+                        message: 'WhatsApp Bot 已在运行'
+                    }));
+                    break;
+                }
+                try {
+                    botInstance = new WhatsAppBot();
+                    botInstance.initialize();
+                    rn_bridge.channel.send(JSON.stringify({
+                        type: 'wa_started',
+                        message: 'WhatsApp Bot 已启动'
+                    }));
+                } catch (e) {
+                    console.error('启动 WhatsApp Bot 失败:', e);
+                    botInstance = null;
+                    rn_bridge.channel.send(JSON.stringify({
+                        type: 'error',
+                        message: 'WhatsApp Bot 启动失败: ' + e.message
+                    }));
+                }
+                break;
+            case 'restart_wa':
+                console.log('🔄 收到重启请求');
+                try {
+                    if (botInstance && botInstance.shutdown) {
+                        await botInstance.shutdown();
+                    }
+                    botInstance = new WhatsAppBot();
+                    await botInstance.initialize();
+                    rn_bridge.channel.send(JSON.stringify({
+                        type: 'wa_started',
+                        message: 'WhatsApp Bot 已重新启动'
+                    }));
+                } catch (e) {
+                    console.error('重启失败:', e);
+                    rn_bridge.channel.send(JSON.stringify({
+                        type: 'error',
+                        message: '重启失败: ' + e.message
+                    }));
+                }
+                break;
+            case 'stop_wa':
+                console.log('⏹️ 收到停止请求');
+                try {
+                    if (!botInstance) {
+                        rn_bridge.channel.send(JSON.stringify({ type: 'wa_stopped', message: 'Bot 未在运行' }));
+                        break;
+                    }
+                    if (botInstance.shutdown) {
+                        await botInstance.shutdown();
+                    }
+                    botInstance = null;
+                    rn_bridge.channel.send(JSON.stringify({ type: 'wa_stopped', message: 'WhatsApp Bot 已停止' }));
+                } catch (e) {
+                    console.error('停止失败:', e);
+                    rn_bridge.channel.send(JSON.stringify({ type: 'error', message: '停止失败: ' + e.message }));
+                }
+                break;
+            default:
+                rn_bridge.channel.send('Echo: ' + msg);
         }
     } catch (e) {
+        console.error('消息解析失败:', e);
         rn_bridge.channel.send('Echo: ' + msg);
     }
 });
 
+// 首次自动启动（单例）
+botInstance = new WhatsAppBot();
+botInstance.initialize();
 
-// 启动机器人
-const bot = new WhatsAppBot();
-bot.initialize();
+// 为 WhatsAppBot 添加优雅关闭
+WhatsAppBot.prototype.shutdown = async function() {
+    try {
+        this.shuttingDown = true;
+        if (this.groupTimer) {
+            clearTimeout(this.groupTimer);
+            this.groupTimer = null;
+        }
+        if (this.sock) {
+            try { this.sock.ev && this.sock.ev.removeAllListeners && this.sock.ev.removeAllListeners(); } catch (_) {}
+            try { this.sock.ws && this.sock.ws.close && this.sock.ws.close(); } catch (_) {}
+            try { this.sock.end && this.sock.end(new Error('shutdown')); } catch (_) {}
+            try { this.sock.logout && (await this.sock.logout()); } catch (_) {}
+        }
+        this.sock = null;
+        this.isConnected = false;
+        console.log('✅ WhatsApp Bot 已优雅关闭');
+        return true;
+    } catch (e) {
+        console.error('shutdown 异常:', e);
+        return false;
+    }
+};

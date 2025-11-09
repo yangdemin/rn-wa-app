@@ -36,7 +36,10 @@ jobs:
       run: |
         sdkmanager "platform-tools" "platforms;android-33" "build-tools;30.0.3"
         sdkmanager "ndk;23.1.7779620"
-        sdkmanager "cmake;3.22.1"
+        # nodejs-mobile requires CMake 3.18.1 specifically
+        sdkmanager "cmake;3.18.1"
+        echo "CMake in SDK:"
+        ls -la "$ANDROID_HOME/cmake" || true
         
     - name: Cache node modules
       uses: actions/cache@v4

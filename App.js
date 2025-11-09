@@ -14,6 +14,17 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [nodeStatus, setNodeStatus] = useState('Starting...');
   const [qrCode, setQrCode] = useState(null); // 存储二维码数据
+  const [waRunning, setWaRunning] = useState(false); // Bot 是否已启动
+  const [waConnected, setWaConnected] = useState(false); // 是否已连接 WhatsApp
+
+  const stopWhatsApp = () => {
+    if (!waRunning) {
+      setMessages(prev => [...prev, 'React Native: Bot 未运行']);
+      return;
+    }
+    nodejs.channel.send(JSON.stringify({ command: 'stop_wa' }));
+    setMessages(prev => [...prev, 'React Native: 请求停止 WhatsApp Bot']);
+  };
 
   useEffect(() => {
     // 启动 Node.js 进程
@@ -35,9 +46,11 @@ function App() {
           setMessages(prev => [...prev, `Node.js: ${data.message}`]);
           setNodeStatus('Node.js is ready');
         } else if (data && data.type === 'wa_started') {
+          setWaRunning(true);
           setMessages(prev => [...prev, `WhatsApp Bot: ${data.message}`]);
         } else if (data && data.type === 'status') {
-          setMessages(prev => [...prev, `Status: ${data.message}`]);
+          if (typeof data.waRunning === 'boolean') setWaRunning(data.waRunning);
+          setMessages(prev => [...prev, `Status: ${data.message}${data.waRunning ? ' (Bot 运行中)' : ''}`]);
         } else if (data && data.type === 'network_test') {
           // 网络测试结果
           const summary = `🌐 网络测试: ${data.success}/${data.total} 成功`;
@@ -56,8 +69,13 @@ function App() {
           console.log('二维码数据:', data.qrCode);
         } else if (data && data.type === 'connected') {
           // 连接成功 - 清除二维码
+          setWaConnected(true);
           setMessages(prev => [...prev, `✅ ${data.message}`]);
           setQrCode(null);
+          } else if (data && data.type === 'wa_stopped') {
+            setWaRunning(false);
+            setWaConnected(false);
+            setMessages(prev => [...prev, `🛑 ${data.message}`]);
         } else {
           // 未知的结构化消息，展示 JSON
           setMessages(prev => [...prev, `Node.js: ${JSON.stringify(data)}`]);
@@ -84,10 +102,23 @@ function App() {
   };
 
   const startWhatsApp = () => {
-    nodejs.channel.send(JSON.stringify({
-      command: 'start_wa'
-    }));
+    if (waRunning) {
+      setMessages(prev => [...prev, 'React Native: Bot 已在运行，忽略重复启动']);
+      return;
+    }
+    nodejs.channel.send(JSON.stringify({ command: 'start_wa' }));
     setMessages(prev => [...prev, `React Native: 发送启动 WhatsApp 命令`]);
+  };
+
+  const restartWhatsApp = () => {
+    nodejs.channel.send(JSON.stringify({ command: 'restart_wa' }));
+    setWaConnected(false);
+    setMessages(prev => [...prev, 'React Native: 请求重启 WhatsApp Bot']);
+  };
+
+  const queryStatus = () => {
+    nodejs.channel.send(JSON.stringify({ command: 'status' }));
+    setMessages(prev => [...prev, 'React Native: 查询状态']);
   };
 
   const testNetwork = () => {
@@ -122,11 +153,17 @@ function App() {
         <View style={styles.buttonContainer}>
           <Button title="发送消息" onPress={sendMessage} />
           <View style={styles.buttonSpacer} />
-          <Button title="启动 WhatsApp" onPress={startWhatsApp} color="#25D366" />
+          <Button title={waRunning ? (waConnected ? '已连接' : '启动中...') : '启动 WhatsApp'} disabled={waRunning} onPress={startWhatsApp} color="#25D366" />
         </View>
-        
+
         <View style={styles.buttonContainer}>
-          <Button title="🌐 测试网络连接" onPress={testNetwork} color="#007AFF" />
+          <Button title="🌐 测试网络" onPress={testNetwork} color="#007AFF" />
+          <View style={styles.buttonSpacer} />
+            <Button title="查询状态" onPress={queryStatus} color="#6c757d" />
+          <View style={styles.buttonSpacer} />
+          <Button title="重启 Bot" onPress={restartWhatsApp} color="#ff9800" />
+          <View style={styles.buttonSpacer} />
+          <Button title="停止 Bot" onPress={stopWhatsApp} color="#dc3545" disabled={!waRunning} />
         </View>
         
         <ScrollView style={styles.messageContainer}>

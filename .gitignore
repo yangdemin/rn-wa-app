@@ -1,0 +1,43 @@
+# OSX
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab
+
+# iOS
+ios/Pods/
+ios/build/
+
+# Metro
+.metro-health-check*
+
+# Baileys auth
+nodejs-assets/nodejs-project/auth_info/
+nodejs-assets/nodejs-project/login_qr/
+
+# Baileys source (if using git submodule instead)
+# nodejs-assets/nodejs-project/baileys-src/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Misc
+coverage/
+.tmp/

@@ -1,0 +1,79 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+      
+    - name: Install Android SDK components
+      run: |
+        sdkmanager "platform-tools" "platforms;android-33" "build-tools;30.0.3"
+        sdkmanager "ndk;23.1.7779620"
+        sdkmanager "cmake;3.22.1"
+        
+    - name: Cache node modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          node_modules
+          nodejs-assets/nodejs-project/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock', '**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+          
+    - name: Install dependencies
+      run: |
+        yarn install
+        cd nodejs-assets/nodejs-project
+        npm install --production
+        
+    - name: Clean test files from nodejs-project
+      run: |
+        cd nodejs-assets/nodejs-project
+        find node_modules -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete
+        find Baileys-6.7.21/node_modules -type f \( -name "*test*" -o -name "*.ts" -o -name "*.md" -o -name "*.map" \) -delete 2>/dev/null || true
+        
+    - name: Build Android APK
+      run: |
+        cd android
+        ./gradlew assembleDebug --no-daemon
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-debug
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        
+    - name: Create Release (optional)
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Build ${{ github.run_number }}
+        files: android/app/build/outputs/apk/debug/app-debug.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

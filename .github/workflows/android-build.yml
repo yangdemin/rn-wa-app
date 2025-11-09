@@ -74,7 +74,7 @@ jobs:
     - name: Bundle JS for Android (embed index.android.bundle into APK)
       run: |
         mkdir -p android/app/src/main/assets || true
-        npx react-native bundle \
+        yarn react-native bundle \
           --platform android \
           --dev false \
           --entry-file index.js \

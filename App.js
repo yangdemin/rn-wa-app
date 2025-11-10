@@ -19,6 +19,7 @@ function App() {
   const [waRunning, setWaRunning] = useState(false); // Bot 是否已启动
   const [waConnected, setWaConnected] = useState(false); // 是否已连接 WhatsApp
   const [qrSavedInfo, setQrSavedInfo] = useState(null); // 最近一次保存的二维码信息
+  const [pairingCode, setPairingCode] = useState(null); // 当前配对码
 
   const stopWhatsApp = () => {
     if (!waRunning) {
@@ -69,8 +70,16 @@ function App() {
           // 二维码 - 显示在界面上
           setMessages(prev => [...prev, `📱 收到二维码，请扫描登录 WhatsApp`]);
           setQrCode(data.qrCode); // 保存二维码数据用于显示
+          setPairingCode(null);
           setQrSavedInfo(null);
           console.log('二维码数据:', data.qrCode);
+        } else if (data && data.type === 'pairing_code') {
+          if (data.code) {
+            setPairingCode(data.code);
+            setQrCode(null);
+            setQrSavedInfo(null);
+            setMessages(prev => [...prev, `🔢 配对码: ${data.code}`]);
+          }
         } else if (data && data.type === 'qr_saved') {
           setQrSavedInfo({ filePath: data.filePath, base64: data.base64 });
           setMessages(prev => [...prev, `🖼️ 二维码图片已保存: ${data.filePath}`]);
@@ -79,10 +88,12 @@ function App() {
           setWaConnected(true);
           setMessages(prev => [...prev, `✅ ${data.message}`]);
           setQrCode(null);
+          setPairingCode(null);
           setQrSavedInfo(null);
           } else if (data && data.type === 'wa_stopped') {
             setWaRunning(false);
             setWaConnected(false);
+            setPairingCode(null);
             setMessages(prev => [...prev, `🛑 ${data.message}`]);
         } else {
           // 未知的结构化消息，展示 JSON
@@ -147,26 +158,37 @@ function App() {
         <Text style={styles.status}>{nodeStatus}</Text>
         
         {/* 显示二维码 */}
-        {qrCode && (
+        {(qrCode || pairingCode) && (
           <View style={styles.qrContainer}>
-            <Text style={styles.qrTitle}>📱 请使用 WhatsApp 扫描二维码登录</Text>
-            <View style={styles.qrCodeWrapper}>
-              <QRCode
-                value={qrCode}
-                size={250}
-                color="black"
-                backgroundColor="white"
-              />
-            </View>
-            <Text style={styles.qrHint}>打开 WhatsApp → 设置 → 已连接的设备 → 连接设备</Text>
-            {qrSavedInfo?.filePath && (
-              <Text style={styles.qrPath}>已保存到: {qrSavedInfo.filePath}</Text>
-            )}
-            {qrSavedInfo?.base64 && (
-              <Image
-                source={{ uri: qrSavedInfo.base64 }}
-                style={styles.qrSavedPreview}
-              />
+            <Text style={styles.qrTitle}>
+              {pairingCode ? '🔢 请在手机上输入以下配对码' : '📱 请使用 WhatsApp 扫描二维码登录'}
+            </Text>
+            {pairingCode ? (
+              <View style={styles.pairingWrapper}>
+                <Text style={styles.pairingCode}>{pairingCode}</Text>
+                <Text style={styles.qrHint}>打开 WhatsApp → 设置 → 已连接的设备 → 使用配对码</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.qrCodeWrapper}>
+                  <QRCode
+                    value={qrCode}
+                    size={250}
+                    color="black"
+                    backgroundColor="white"
+                  />
+                </View>
+                <Text style={styles.qrHint}>打开 WhatsApp → 设置 → 已连接的设备 → 连接设备</Text>
+                {qrSavedInfo?.filePath && (
+                  <Text style={styles.qrPath}>已保存到: {qrSavedInfo.filePath}</Text>
+                )}
+                {qrSavedInfo?.base64 && (
+                  <Image
+                    source={{ uri: qrSavedInfo.base64 }}
+                    style={styles.qrSavedPreview}
+                  />
+                )}
+              </>
             )}
           </View>
         )}
@@ -269,6 +291,17 @@ const styles = StyleSheet.create({
     height: 200,
     marginTop: 12,
     borderRadius: 8,
+  },
+  pairingWrapper: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  pairingCode: {
+    fontSize: 36,
+    letterSpacing: 4,
+    fontWeight: 'bold',
+    color: '#25D366',
+    marginBottom: 12,
   },
   buttonContainer: {
     flexDirection: 'row',

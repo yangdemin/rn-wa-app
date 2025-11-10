@@ -220,6 +220,8 @@ class WhatsAppBot {
                     throw new Error('无法初始化认证状态');
                 }
             }
+
+            const shouldGeneratePairing = !state.creds?.registered;
             
             // 配置自定义 DNS 服务器（解决 DNS 解析超时问题）
             // 优先使用国外 DNS，避免国内 DNS 污染
@@ -236,6 +238,7 @@ class WhatsAppBot {
                 
                 // 打印版本信息（baileys 的配置）
                 printQRInTerminal: false, // 不在终端打印二维码
+                generatePairingCode: shouldGeneratePairing,
                 
                 // 移动端推荐配置
                 syncFullHistory: false, // 不同步完整历史记录
@@ -284,7 +287,16 @@ class WhatsAppBot {
     }
 
     handleConnectionUpdate(update) {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect, qr, pairingCode } = update;
+
+        if (pairingCode) {
+            const formattedCode = Array.isArray(pairingCode) ? pairingCode.join('-') : pairingCode;
+            console.log('🔢 获取到配对码:', formattedCode);
+            rn_bridge.channel.send(JSON.stringify({
+                type: 'pairing_code',
+                code: formattedCode
+            }));
+        }
         
         // 处理二维码
         if (qr) {

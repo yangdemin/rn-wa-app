@@ -39,7 +39,7 @@ global.crypto = require('crypto');
 
 
 // 使用 npm 安装的 Baileys (支持 Node.js 18)
-const { makeWASocket, useMultiFileAuthState, Browsers, downloadMediaMessage, getContentType, DisconnectReason } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, Browsers, downloadMediaMessage, getContentType, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const pino = require('pino');
@@ -202,7 +202,15 @@ class WhatsAppBot {
             
             // 使用绝对路径
             const authDir = getAuthDir();
-            const { state, saveCreds } = await useMultiFileAuthState(authDir);
+            let { state, saveCreds } = await useMultiFileAuthState(authDir);
+            if (!state || !state.creds) {
+                console.warn('⚠️ 认证状态损坏，尝试清理并重新生成');
+                clearAuthInfo();
+                ({ state, saveCreds } = await useMultiFileAuthState(authDir));
+                if (!state || !state.creds) {
+                    throw new Error('无法初始化认证状态');
+                }
+            }
             
             // 配置自定义 DNS 服务器（解决 DNS 解析超时问题）
             // 优先使用国外 DNS，避免国内 DNS 污染
@@ -210,11 +218,10 @@ class WhatsAppBot {
             dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1']);
             console.log('✅ 已配置 DNS 服务器: 8.8.8.8 (Google), 8.8.4.4 (Google), 1.1.1.1 (Cloudflare), 1.0.0.1 (Cloudflare)');
             
-            const WHATSAPP_VERSION = [2, 3000, 1027934701];
+            const { version: waVersion } = await fetchLatestBaileysVersion();
             this.sock = makeWASocket({
-                version: WHATSAPP_VERSION,
+                version: waVersion,
                 auth: state,
-                // 试用桌面端标识（macOS Chrome），以 WhatsApp Web 模式接入
                 browser: Browsers.macOS('Chrome'),
                 logger: pino({ level: 'silent' }), // 关闭调试日志
                 

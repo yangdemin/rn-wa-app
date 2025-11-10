@@ -3,6 +3,15 @@ var rn_bridge = require('rn-bridge');
 // 修复 crypto 全局变量（nodejs-mobile 环境需要）
 global.crypto = require('crypto');
 
+// 捕获未处理的异常与 Promise 拒绝，避免 Node 进程直接退出
+process.on('unhandledRejection', (reason) => {
+    console.error('未处理的 Promise 拒绝:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('未捕获的异常:', err);
+});
+
 // 将 Node.js 控制台日志转发到 React Native（以及保留原 console 输出）
 ;(function setupLogForwarding() {
     try {

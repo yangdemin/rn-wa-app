@@ -214,8 +214,8 @@ class WhatsAppBot {
             this.sock = makeWASocket({
                 version: WHATSAPP_VERSION,
                 auth: state,
-                // 试用桌面端标识，以 WhatsApp Web 客户端模式接入
-                browser: Browsers.desktop('Chrome'),
+                // 试用桌面端标识（macOS Chrome），以 WhatsApp Web 模式接入
+                browser: Browsers.macOS('Chrome'),
                 logger: pino({ level: 'silent' }), // 关闭调试日志
                 
                 // 打印版本信息（baileys 的配置）

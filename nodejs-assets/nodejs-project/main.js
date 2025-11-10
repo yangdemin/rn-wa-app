@@ -214,9 +214,8 @@ class WhatsAppBot {
             this.sock = makeWASocket({
                 version: WHATSAPP_VERSION,
                 auth: state,
-                // ⚠️ 关键修改：使用 appropriate (移动端) 而不是桌面浏览器
-                // baileys 6.6.0+ 可能需要 Mobile API
-                browser: Browsers.appropriate('Chrome'),
+                // 试用桌面端标识，以 WhatsApp Web 客户端模式接入
+                browser: Browsers.desktop('Chrome'),
                 logger: pino({ level: 'silent' }), // 关闭调试日志
                 
                 // 打印版本信息（baileys 的配置）

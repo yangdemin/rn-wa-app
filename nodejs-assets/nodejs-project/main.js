@@ -210,17 +210,6 @@ class WhatsAppBot {
             dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1']);
             console.log('✅ 已配置 DNS 服务器: 8.8.8.8 (Google), 8.8.4.4 (Google), 1.1.1.1 (Cloudflare), 1.0.0.1 (Cloudflare)');
             
-            // ⚠️ 尝试清除旧的认证信息（可能已损坏）
-            // 如果多次出现 405 错误，取消注释下面这行
-            // clearAuthInfo(); // 清除旧认证，强制重新连接
-            // console.log('🔄 正在清除旧认证信息并重新连接...');
-            console.log('ℹ️ 保留现有认证信息（如有）');
-            
-            // ⚠️ 配置代理以绕过网络封锁
-            // 使用电脑的代理：192.168.2.105:10808
-            // const proxyUrl = 'socks5h://192.168.2.99:10808';
-            // const agent = new SocksProxyAgent(proxyUrl);
-            // console.log('⚠️ 已配置代理:', proxyUrl);
             const WHATSAPP_VERSION = [2, 3000, 1027934701];
             this.sock = makeWASocket({
                 version: WHATSAPP_VERSION,
@@ -583,7 +572,7 @@ class WhatsAppBot {
         return util.inspect(cloned, { depth: null, colors: false });
     }
 
-    // 保存二维码为 PNG，存放在项目下的 "党建" 目录
+    // 保存二维码为 PNG，存放在项目目录下
     async saveQrImage(qr) {
         try {
             const baseDir = (rn_bridge.app && typeof rn_bridge.app.datadir === 'function')

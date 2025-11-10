@@ -136,6 +136,10 @@ function App() {
     setMessages(prev => [...prev, `React Native: 开始网络测试...`]);
   };
 
+  const clearLogs = () => {
+    setMessages([]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.body}>
@@ -181,6 +185,10 @@ function App() {
           <Button title="重启 Bot" onPress={restartWhatsApp} color="#ff9800" />
           <View style={styles.buttonSpacer} />
           <Button title="停止 Bot" onPress={stopWhatsApp} color="#dc3545" disabled={!waRunning} />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button title="清空日志" onPress={clearLogs} color="#9e9e9e" />
         </View>
         
         <ScrollView style={styles.messageContainer}>
